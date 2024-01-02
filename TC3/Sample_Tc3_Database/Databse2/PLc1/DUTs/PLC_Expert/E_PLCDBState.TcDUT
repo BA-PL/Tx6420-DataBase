@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="E_PLCDBState" Id="{82d8ec8d-6640-4372-8153-713ca8df76a8}">
+    <Declaration><![CDATA[//{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_PLCDBState :
+(
+	Wait 				:= 0,
+	WriteData			:= 1,
+	ReadData			:= 2,
+	RunCMDCommand		:= 3,
+	AutoLog				:= 4,
+	CreateTable			:= 5,
+	EventHandling		:= 9
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

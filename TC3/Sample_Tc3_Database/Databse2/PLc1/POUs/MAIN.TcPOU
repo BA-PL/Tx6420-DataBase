@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="MAIN" Id="{94128c93-4a1c-4c8e-8b60-d825fdfb647f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	rTemp					: REAL;
+	rVar					: REAL;
+	rVariablePLC			: REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[P_PLCExpert_AutoLog();
+//P_PLCExpert_Independent_FBs();
+//P_SQLExpert_NoDataRet();
+//P_SQLExpert_DataRet();
+//P_InfluxTEST();
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="23" Count="3" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

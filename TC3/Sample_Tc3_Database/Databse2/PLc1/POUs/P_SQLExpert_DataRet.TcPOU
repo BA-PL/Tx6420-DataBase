@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_SQLExpert_DataRet" Id="{ec434504-99cb-4c9b-a23b-57ec6be66763}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_SQLExpert_DataRet
+//Program realizuje komendę SQL SELECT dla przykładowej tabeli.
+VAR
+	fbSQLDB					: 	FB_SQLDatabaseEvt(sNetID:='', tTimeout:=T#10S);
+	fbSQLCmd 				: 	FB_SQLCommandEvt(sNetID:='', tTimeout:=T#10S);
+	fbSQLResult				:	FB_SQLResultEvt(sNetID:='', tTimeout:=T#30S);
+	iResult		 			:	Tc3_Database.I_TcMessage;						//Struktura w której zapisywane są dane o stanie komunikacji z bazą
+	sQuery					: 	STRING(253);
+	iState					:	INT;
+	stSelect				: 	ST_Select;										//Struktura w której zapisywany jest wynik komendy SELECT
+	sSqlCmdSelect			:	STRING						:= 'SELECT ID, Timestamp, Name, Value FROM  WHERE Value=21.3';	// Komenda SQL
+				
+	// Zmienne konfigurowalne przez użytkownika
+	hDBID					:	UDINT 						:= 1;				//DBID bazy danych z którą się komunikujemy
+	bRead					:	BOOL;
+	udiStartIndex			:	UDINT						:= 0;				//Indeks od którego będą odczytywane rekordy
+	udiRecordCount			:	UDINT						:= 1;				//Liczba odczytanych rekordów
+	sTableName				:	STRING						:= 'TESTtable';		//Nazwa tabeli, na której wykonujemy komendę
+	
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState OF
+	0: //bRead rozpoczyna program
+		IF bRead THEN
+			bRead := FALSE;
+			iState := iState + 10;
+		END_IF
+		
+	10: //Połączenie z bazą danych
+		IF fbSQLDB.Connect(hDBID) THEN
+			iResult := fbSQLDB.ipTcResult;
+			IF fbSQLDB.bError THEN
+				iState := 99;
+			ELSE
+				iState := iState + 10;
+			END_IF
+		END_IF 
+		
+	20: //Stworzenie komendy SQL - wstawienie do tabeli rekordu
+		fbSQLDB.CreateCmd(pSQLCommand:= ADR(fbSQLCmd));
+		IF NOT fbSQLDB.bBusy THEN
+			iResult := fbSQLDB.ipTcResult;
+			IF fbSQLDB.bError THEN
+				iState := 99;
+			ELSE
+				iState := iState + 10;
+				sQuery :=INSERT('SELECT ID, Timestamp, Name, Value FROM  WHERE Value=21.3', sTableName, 39);
+			END_IF
+		END_IF
+		
+	30: //Przygotowanie danych
+		fbSQLCmd.ExecuteDataReturn(
+									pSQLCmd := ADR(sQuery),
+									cbSQLCmd := TO_UDINT(LEN(sQuery) + 1),
+									pSQLDBResult := ADR(fbSQLResult));
+		IF NOT fbSQLCmd.bBusy THEN
+			iResult := fbSQLCmd.ipTcResult;
+			IF fbSQLCmd.bError THEN
+				iState := 99;
+			ELSE
+				 iState := iState + 10;
+			END_IF
+		END_IF
+
+	40: //Umieszczenie danych w pamięci podręcznej
+		fbSQLResult.Read(
+				nStartIndex:= udiStartIndex, 
+				nRecordCount:= udiRecordCount, 
+				pData:= ADR(stSelect), 
+				cbData:= SIZEOF(stSelect), 
+				bWithVerifying:= FALSE , 
+				bDataRelease:= TRUE);
+
+		IF NOT fbSQLResult.bBusy THEN
+			iResult := fbSQLResult.ipTcResult;
+			IF fbSQLResult.bError THEN
+				iState := 99;
+			else
+				iState := iState + 10;
+			END_IF
+		END_IF
+		
+	50: //Uwolnienie danych z pamięci podręcznej
+		fbSQLResult.Release();
+		IF NOT fbSQLResult.bBusy THEN
+			iResult := fbSQLResult.ipTcResult;
+			IF fbSQLResult.bError THEN
+				iState := 99;
+			else
+				iState := iState + 10;
+			END_IF
+		END_IF
+		
+	60:	//Rozłączenie sie z bazą danych
+		fbSQLDB.Disconnect();
+		IF NOT fbSQLDB.bBusy THEN
+			iResult := fbSQLDB.ipTcResult;
+			IF fbSQLDB.bError THEN
+				iState := 99;
+			else
+				iState := 0;
+			END_IF
+		END_IF
+		
+	99: // Error
+		fbSQLDB.Disconnect();
+		iState := 0;
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="P_SQLExpert_DataRet">
+      <LineId Id="18" Count="9" />
+      <LineId Id="29" Count="10" />
+      <LineId Id="41" Count="9" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="54" Count="17" />
+      <LineId Id="73" Count="10" />
+      <LineId Id="85" Count="10" />
+      <LineId Id="97" Count="9" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_ResultEvent" Id="{98ff11f6-11cc-4dc2-aaf7-e54ab72bdf5d}">
+    <Declaration><![CDATA[TYPE ST_ResultEvent :
+STRUCT
+	gEventClass 			: 	GUID;
+	wsEventClassDisplayName : 	WSTRING(255);
+	udiEventId				: 	UDINT;
+	eSeverity 				: 	TcEventSeverity;
+	sSourcePath				:	T_MaxString;
+	wsText					:	WSTRING(255);
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

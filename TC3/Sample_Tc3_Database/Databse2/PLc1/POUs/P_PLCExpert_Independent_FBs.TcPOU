@@ -1,0 +1,206 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_PLCExpert_Independent_FBs" Id="{865b9057-c3f6-4c3a-a747-d5a30f117ce6}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_PLCExpert_Independent_FBs
+VAR																												
+																
+	fbPLCDBWrite	: FB_PLCDBWriteEvt(sNetID:='', tTimeout:=T#5S);								
+	fbPLCDBRead		: FB_PLCDBReadEvt(sNetID:='', tTimeout:=T#5S);								
+	fbPLCDBCmd		: FB_PLCDBCmdEvt(sNetID := '', tTimeout := T#5S);                           
+	fbPLCDBAutoLog  : FB_PLCDBAutoLogEvt(sNetID:='', tTimeout := T#5S);							
+	fbPLCDBCreate	: FB_PLCDBCreateEvt(sNetID:='', tTimeout := T#5S);
+		
+	arrColumns		: ARRAY[0..3] OF STRING[50] := ['ID', 'Timestamp', 'Name', 'Value'];		// Tablica zawierająca nazwy kolumn tabeli	
+	arrData			: ARRAY[0..19] OF ST_DB;													// Tablica w której przechowywane będą dane z tabeli
+	arrParameter	: ARRAY [0..3] OF ST_ExpParameter := [										// Tablica z parametrami tabeli
+								(sParaName := 'id', 	nParaSize := 8,		eParaType := E_EXPPARAMETERTYPE.Int64), 
+								(sParaName := 'time', 	nParaSize := 4, 	eParaType := E_EXPPARAMETERTYPE.DateTime),
+								(sParaName := 'name', 	nParaSize := 81, 	eParaType := E_EXPPARAMETERTYPE.STRING_), 
+								(sParaName := 'value', 	nParaSize := 8, 	eParaType := E_EXPPARAMETERTYPE.Double64)];
+	
+	ipTcResult		: Tc3_Database.I_TcMessage;													
+	sSourceInfo		: Tc3_EventLogger.I_TcSourceInfo;											
+	sEventClass		: Tc3_EventLogger.GUID;														
+	eSeverity		: Tc3_EventLogger.TcEventSeverity;
+	stEventEntry	: Tc3_EventLogger.TcEventEntry;	
+	nEventID		: UDINT;																	// Event ID											
+
+	sCommand		: STRING(1000);																// Będzie zawierać komendę SQL
+	arrColumnInfo   : ARRAY [0..3] OF ST_ColumnInfo :=[											// Ustawienia nowej tabeli
+								(sName := 'ID',			eType := E_ColumnType.BigInt, 	nLength := 8, 	sProperty := 'IDENTITY(1,1)'), 
+								(sName := 'Timestamp', 	eType := E_ColumnType.DateTime, nLength := 8),
+								(sName := 'Name', 		eType := E_ColumnType.NVarChar, nLength := 81),
+								(sName := 'Value', 		eType := E_ColumnType.REAL_, 	nLength := 8)];											
+	
+	// Zmienne konfigurowalne przez użytkownika
+	bRun			: BOOL;																		// Włączenie wszystkich grup autologowania
+	hDBID			: UDINT 		:= 1;														// Numer bazy danych, na której chcemy wykonywać operacje
+	sDBID			: STRING(50)	:= 'TESTtable';												// Nazwa bazy danych, na której chcemy wykonywać operacje
+	eCommands		: E_Commands 	:= ReadAllfromTable;										// Wybranie komendy SQL
+	ePLCDBState		: E_PLCDBState	:= Wait;													// Wybranie instrukcji, które mają być wykonane
+	hAutoLogGroup	: UDINT			:= 1;														// Numer grupy autologowania, na której chcemy wykonywać operacje
+	nRecords		: UDINT			:= 10;														// Liczba rekordów czytanych przez fbPLCDBCmd
+	nInitialIndex	: UDINT			:= 0;														// Indeks pierwszego rekordu czytanego przez fbPLCDBCmd/fbPLCDBRead
+	nRecordAmount	: UDINT			:= 20;														// Liczba rekordów, które zostaną przeczytane
+	sOrderBy		: STRING(50)	:= 'ID';													// Wyznaczenie kolumny, według której dane bedą poukładane
+	stDB			: ST_DB;																	// Struktura z wartościami zmiennych, które zostaną wpisane do tabeli za pomocą fbPLCDBWrite
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE eCommands OF		//Wybranie realizowanej komendy SQL										
+																
+	InsertIntoTable:										  	
+		sCommand := INSERT('INSERT INTO  (Timestamp, Name, Value) VALUES ( $'2018-01-31 14:59:27$', $'Temperature$', 21.3)', sDBID, 12);	
+	ClearTable:													
+		sCommand := INSERT('DELETE FROM ', sDBID, 12);       
+	DropTable:													
+		sCommand := INSERT('DROP TABLE ', sDBID, 11);        
+																
+		                                                        
+	ReadAllfromTable: 											
+		sCommand := INSERT('SELECT * FROM ', sDBID, 14);      
+	CustomReadfromTable:										
+		sCommand := INSERT('SELECT ID, Timestamp, Name, Value FROM  WHERE Value=21.3', sDBID, 39); 
+		
+END_CASE
+
+CASE ePLCDBState OF												
+	                                                            
+	Wait:														
+		;                                                       
+		                                                        
+	WriteData:			// Wpisanie danych do tabeli										
+		fbPLCDBWrite.WriteStruct(								
+		hDBID:= hDBID, 											
+		sTableName:= sDBID, 									
+		pRecord:= ADR(stDB), 															
+		cbRecord:= SIZEOF(stDB), 								
+		pColumnNames:= ADR(arrColumns), 						
+		cbColumnNames:= SIZEOF(arrColumns));					
+	                                                            
+		IF NOT fbPLCDBWrite.bBusy THEN							
+			ipTcResult := fbPLCDBWrite.ipTcResult;				
+			IF NOT fbPLCDBWrite.bError THEN						
+				ePLCDBState := ReadData;						
+			ELSE												
+				ePLCDBState := EventHandling;					
+			END_IF
+		END_IF
+	
+	ReadData:			// Odczytanie danych z tabeli										
+		fbPLCDBRead.ReadStruct(									
+		hDBID:= hDBID, 											
+		sTableName:= sDBID, 									
+		pColumnNames:= ADR(arrColumns), 						
+		cbColumnNames:= SIZEOF(arrColumns), 					
+		sOrderByColumn:= sOrderBy, 								
+		eOrderType:= E_OrderType.ASC, 							
+		nStartIndex:= nInitialIndex,	 						
+		nRecordCount:= nRecordAmount, 							
+		pData:= ADR(arrData), 									
+		cbData:= SIZEOF(arrData));								
+		                                                        
+		IF NOT fbPLCDBRead.bBusy THEN							
+		ipTcResult := fbPLCDBRead.ipTcResult;					
+			IF NOT fbPLCDBRead.bError THEN						
+				ePLCDBState := Wait;							
+			ELSE												
+				ePLCDBState := EventHandling;					
+			END_IF
+		END_IF
+	
+	RunCMDCommand: 		// Wykonanie komendy SQL										
+	IF eCommands = InsertIntoTable OR eCommands = DropTable OR eCommands = ClearTable THEN
+		fbPLCDBCmd.Execute(										
+			hDBID:= hDBID, 										
+			pExpression:= ADR(sCommand), 						
+			cbExpression:= SIZEOF(sCommand), 					
+			pData:= ADR(stDB), 									
+			cbData:= SIZEOF(stDB), 								
+			pParameter:= ADR(arrParameter), 					
+			cbParameter:= SIZEOF(arrParameter));				
+			                                                    
+			IF NOT fbPLCDBCmd.bBusy THEN						
+				ipTcResult := fbPLCDBRead.ipTcResult;			
+				IF NOT fbPLCDBRead.bError THEN					
+					ePLCDBState := ReadData;					
+				ELSE											
+					ePLCDBState := EventHandling;				
+				END_IF
+			END_IF
+	ELSE														
+		fbPLCDBCmd.ExecuteDataReturn(							
+			hDBID:= hDBID, 										
+			pExpression:= ADR(sCommand), 						
+			cbExpression:= SIZEOF(sCommand), 					
+			pData:= ADR(stDB), 									
+			cbData:= SIZEOF(stDB), 								
+			pParameter:= ADR(arrParameter), 					
+			cbParameter:= SIZEOF(arrParameter), 				
+			nStartIndex:= nInitialIndex, 						
+			nRecordCount:= nRecordAmount, 						
+			pReturnData:= ADR(arrData), 						
+			cbReturnData:= SIZEOF(arrData), 					
+			pRecords:= ADR(nRecords));							
+			IF NOT fbPLCDBCmd.bBusy THEN						
+				ipTcResult := fbPLCDBRead.ipTcResult;			
+				IF NOT fbPLCDBRead.bError THEN					
+					ePLCDBState := Wait;						
+				ELSE											
+					ePLCDBState := EventHandling;				
+				END_IF
+			END_IF
+	END_IF	
+			
+	AutoLog:			// Jednokrotne zebranie wartości zmiennych zdefiniowanych w grupie auto logowania											
+		fbPLCDBAutoLog.RunOnce(hAutologGrpID := hAutoLogGroup, bAll := bRun);
+		IF NOT fbPLCDBAutoLog.bBusy THEN						
+			ipTcResult := fbPLCDBAutoLog.ipTcResult;			
+			IF NOT fbPLCDBAutoLog.bError THEN					
+				ePLCDBState := ReadData;						
+			ELSE												
+				ePLCDBState := EventHandling;					
+			END_IF
+		END_IF
+	
+	CreateTable:		// Stworzenie nowej tabeli
+		fbPLCDBCreate.Table(
+				hDBID:= hDBID, 
+				sTableName:= sDBID, 
+				pTableCfg:= ADR(arrColumnInfo), 
+				cbTableCfg:= SIZEOF(arrColumnInfo));
+		IF NOT fbPLCDBCreate.bBusy THEN
+			ipTcResult := fbPLCDBCreate.ipTcResult;
+			IF NOT fbPLCDBCreate.bError THEN	
+				ePLCDBState := wait;
+			ELSE								
+				ePLCDBState := EventHandling;
+			END_IF
+		END_IF
+		
+	EventHandling:		// Zebranie informacji o błędach									
+		sSourceInfo := ipTcResult.ipSourceInfo;					
+		sEventClass := ipTcResult.EventClass;					
+		eSeverity 	:= ipTcResult.eSeverity;					
+		nEventID	:= ipTcResult.nEventId;						
+		stEventEntry:= ipTcResult.stEventEntry;					
+	                                                            
+		ePLCDBState := Wait;									
+	
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="P_PLCExpert_Independent_FBs">
+      <LineId Id="81" Count="114" />
+      <LineId Id="255" Count="2" />
+      <LineId Id="319" Count="3" />
+      <LineId Id="324" Count="1" />
+      <LineId Id="327" Count="2" />
+      <LineId Id="332" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="196" Count="9" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

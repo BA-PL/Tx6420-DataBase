@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_InfluxTEST" Id="{d7aa5ba8-4ace-4a8d-81d6-4cbcf65000f1}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_InfluxTEST
+VAR
+	rand 	: DRAND;							// Instance of DRAND function block
+    nrand	: LREAL;			
+	fValue1	: LREAL;
+	fValue2	: LREAL;
+	fValue3	: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rand();
+nrand := rand.Num;
+fValue1 := 240.328 + 10 * nrand;
+fValue2 := 7.3292 + nrand;
+fValue3 := 1113.1975 + 50 * nrand;
+]]></ST>
+    </Implementation>
+    <LineIds Name="P_InfluxTEST">
+      <LineId Id="13" Count="4" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

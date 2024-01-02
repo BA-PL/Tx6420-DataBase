@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_Select" Id="{ace4c19a-0574-4aba-b98a-15895892f897}">
+    <Declaration><![CDATA[TYPE ST_Select :
+STRUCT
+	ID: LINT;
+	Timestamp: DT;
+	Name: STRING(80);
+	Value: LREAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

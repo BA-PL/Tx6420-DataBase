@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_PLCExpert_AutoLog" Id="{0e6baa28-2627-4a1b-a222-a68cf0cb9ee8}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_PLCExpert_AutoLog
+VAR
+	
+	fbPLCDBAutoLog  			: FB_PLCDBAutoLogEvt (sNetID:='', tTimeout := T#5S);						// PLCDBAutoLogEvt fb instance
+	ipTcResult					: Tc3_Database.I_TcMessage;	
+    aAutologGrpStatus 			: ARRAY[0..MAX_CONFIGURATIONS] OF ST_AutoLogGrpStatus;
+	
+	// Zmienne konfigurowalne przez użytkownika
+	bRun						: BOOL;																		// TRUE AutoLog Start
+	bStop						: BOOL;																		// TRUE AutoLog Stop
+	tAutoLogStatusCheckCycle	: TIME 														:= T#3S;		// Okres pobierania statusu grupy auto logowania
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bRun AND_THEN fbPLCDBAutoLog.Start() THEN						// Start grupy AutoLog za pomocą bRun
+	bRun := FALSE;
+END_IF
+
+fbPLCDBAutoLog.Status(												// Pobranie infromacji o statusie grupy AutoLog
+						tAutoLogStatusCheckCycle, 
+						ADR(fbPLCDBAutoLog.bError), 
+						ADR(aAutologGrpStatus), 
+						SIZEOF(aAutologGrpStatus));
+
+IF bStop AND NOT bRun AND_THEN fbPLCDBAutoLog.Stop() THEN			// Stop grupy AutoLog za pomocą bStop
+	bStop := FALSE;
+END_IF
+
+IF NOT fbPLCDBAutoLog.bBusy THEN									// Zapisanie do struktury informacji o zwracanych przez blok funkcyjny danych
+	ipTcResult := fbPLCDBAutoLog.ipTcResult;	
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="P_PLCExpert_AutoLog">
+      <LineId Id="47" Count="0" />
+      <LineId Id="50" Count="1" />
+      <LineId Id="91" Count="1" />
+      <LineId Id="110" Count="3" />
+      <LineId Id="84" Count="2" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="39" Count="1" />
+      <LineId Id="29" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
